@@ -1,0 +1,18 @@
+[
+    {
+        "modid": "${id}",
+        "name": "ForgeTemplate",
+        "description": "A simple Minecraft modding template.",
+        "version": "${version}",
+        "mcversion": "${mcversion}",
+        "url": "",
+        "updateUrl": "",
+        "authorList": [
+            "UnifyCraft"
+        ],
+        "credits": "",
+        "logoFile": "",
+        "screenshots": [],
+        "dependencies": []
+    }
+]

@@ -1,0 +1,110 @@
+plugins {
+    id("dev.architectury.architectury-pack200") version("0.1.3")
+    id("com.github.johnrengelman.shadow") version("7.1.0")
+    id("org.jetbrains.kotlin.jvm") version("1.6.10")
+    id("gg.essential.loom") version("0.10.0.0")
+    id("net.kyori.blossom") version("1.3.0")
+    id("java")
+}
+
+archivesBaseName = projectName
+version = projectVersion
+group = projectGroup
+
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+compileJava.options.encoding = "UTF-8"
+
+loom {
+    launchConfigs {
+        client {
+            arg("--tweakClass", "gg.essential.loader.stage0.EssentialSetupTweaker")
+        }
+    }
+
+    runConfigs {
+        client {
+            ideConfigGenerated = true
+        }
+    }
+
+    forge {
+        pack200Provider = new dev.architectury.pack200.java.Pack200Adapter()
+        mixinConfig("mixins.${projectId}.json")
+        mixin.defaultRefmapName.set("mixins.${projectId}.refmap.json")
+    }
+}
+
+blossom {
+    replaceToken("@VERSION@", projectVersion)
+    replaceToken("@NAME@", projectName)
+    replaceToken("@ID@", projectId)
+}
+
+repositories {
+    mavenCentral()
+
+    maven { url("https://repo.spongepowered.org/maven/") }
+    maven { url("https://repo.sk1er.club/repository/maven-public/") }
+}
+
+configurations {
+    shade
+    implementation.extendsFrom(shade)
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:1.8.9")
+    mappings("de.oceanlabs.mcp:mcp_stable:22-1.8.9")
+    forge("net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9")
+
+    // We"re going to use Essential temporarily while UniCore is being worked on.
+    shade("gg.essential:loader-launchwrapper:1.1.3")
+    implementation("gg.essential:essential-1.8.9-forge:1852")
+    compileOnly("org.spongepowered:mixin:0.8.5-SNAPSHOT")
+}
+
+// Gradle has a couple weird issues, we need to do this so our resources are available in the developer environment!
+sourceSets {
+    main {
+        output.resourcesDir = java.classesDirectory
+    }
+}
+
+// We need to change the file name in some way so Shadow can do it"s thing.
+remapJar {
+    archiveClassifier.set("remapped")
+}
+
+// Use our build variables in our resources.
+def mcVersion = "1.8.9"
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    inputs.property("version", projectVersion)
+    inputs.property("mcversion", mcVersion)
+    inputs.property("id", projectId)
+
+    filesMatching("mcmod.info") {
+        expand(
+                "id": projectId,
+                "version": projectVersion,
+                "mcversion": mcVersion
+        )
+    }
+
+    filesMatching("mixins.${projectId}.json") {
+        expand(
+                "id": projectId
+        )
+    }
+}
+
+
+// Configure Shadow here!
+tasks.register("fatJar", com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configure {
+    dependsOn(remapJar)
+    from(remapJar.archiveFile.get())
+    configurations = [project.configurations.shade]
+}
+
+// Do not touch this! It could cause problems if you do...
+assemble.dependsOn(fatJar)
